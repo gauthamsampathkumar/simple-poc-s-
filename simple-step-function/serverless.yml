@@ -1,0 +1,69 @@
+service: simple-step-function
+
+frameworkVersion: '2 || 3'
+
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  iamRoleStatements:
+    - Effect: Allow
+      Action: states:*
+      Resource: arn:aws:states:us-west-2:891067072053:stateMachine:fileImportWorkflow
+
+plugins:
+  - serverless-step-functions
+
+functions:
+  dataExtractionStep:
+    handler: handler.dataExtractionStep
+  terraformFileCreationStep:
+    handler: handler.terraformFileCreationStep
+  terraformExecutionStep:
+    handler: handler.terraformExecutionStep
+  finalStep:
+    handler: handler.finalStep
+
+stepFunctions:
+  stateMachines:
+  #my step function
+    fileImportWorkflow:
+      name: fileImportWorkflow
+      definition:
+      #Starting point of step function execution
+       StartAt: dataExtractionStep
+       States:
+       #step 1
+        dataExtractionStep:
+        #Defining this as task as to link and execute lambda functions. 
+        #For further information on various types please visit: https://docs.aws.amazon.com/step-functions/latest/dg/concepts-states.html
+          Type: Task
+          Resource:
+          #linking step task with a lambda function. Task can be linked with sqs, sns, dynamodb etc,.
+            Fn::GetAtt: [dataExtractionStep, Arn]
+          #output of the above lambda function will be persent stored here and passed on to the next step.
+          ResultPath: "$.firstStepResult"
+          # Next step to be defined here.
+          Next: terraformFileCreationStep
+        #step 2
+        terraformFileCreationStep:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [terraformFileCreationStep, Arn]
+          ResultPath: "$.secondStepResult"
+          Next: terraformExecutionStep
+        #step 3
+        terraformExecutionStep:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [terraformExecutionStep, Arn]
+          ResultPath: "$.thirdStepResult"
+          Next: finalStep
+        #step 4
+        finalStep:
+          Type: Task
+          Resource:
+            Fn::GetAtt: [finalStep, Arn]
+          ResultPath: "$.fourStepResult"
+          End: true
