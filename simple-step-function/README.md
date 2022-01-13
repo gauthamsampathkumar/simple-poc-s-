@@ -10,7 +10,7 @@ Further information on commands, follow: https://www.npmjs.com/package/serverles
 
 # Install dependencies:
 perform 'npm install' on root project directory.
-
+test
 # Deploy application:
 Execute command the following command in root directory,
 aws-vault exec acl-playground -- sls deploy
